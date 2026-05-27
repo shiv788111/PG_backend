@@ -1,7 +1,15 @@
+// complaints.controller.js
+
 import * as complaintsService from "./complaints.service.js";
+
 import { successResponse, errorResponse } from "../../common/utils/response.js";
 
-/*--------------Create Complaint-----------*/
+/*===========================================================================
+
+| CREATE COMPLAINT
+| New complaint create karta hai
+
+===========================================================================*/
 
 export const createComplaint = async (req, res) => {
   try {
@@ -13,11 +21,16 @@ export const createComplaint = async (req, res) => {
   }
 };
 
-/*--------------Get Complaints-----------*/
+/*===========================================================================
+
+| GET COMPLAINTS
+| Saari complaints fetch karta hai
+
+===========================================================================*/
 
 export const getComplaints = async (req, res) => {
   try {
-    const data = await complaintsService.getComplaints(req.user);
+    const data = await complaintsService.getComplaints();
 
     return successResponse(res, data, "Complaints fetched successfully");
   } catch (error) {
@@ -25,7 +38,12 @@ export const getComplaints = async (req, res) => {
   }
 };
 
-/*--------------Resolve Complaint-----------*/
+/*===========================================================================
+
+| RESOLVE COMPLAINT
+| Complaint status ko resolved karta hai
+
+===========================================================================*/
 
 export const resolveComplaint = async (req, res) => {
   try {

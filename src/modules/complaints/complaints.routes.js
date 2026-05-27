@@ -1,3 +1,5 @@
+// complaints.routes.js
+
 import express from "express";
 
 import {
@@ -6,19 +8,29 @@ import {
   resolveComplaint,
 } from "./complaints.controller.js";
 
-
-
 const router = express.Router();
 
-/*--------------Create Complaint-----------*/
+/*===========================================================================
+
+| CREATE COMPLAINT
+
+===========================================================================*/
 
 router.post("/create", createComplaint);
 
-/*--------------Get Complaints-----------*/
+/*===========================================================================
+
+| GET COMPLAINTS
+
+===========================================================================*/
 
 router.get("/", getComplaints);
 
-/*--------------Resolve Complaint-----------*/
+/*===========================================================================
+
+| RESOLVE COMPLAINT
+
+===========================================================================*/
 
 router.put("/resolve/:id", resolveComplaint);
 

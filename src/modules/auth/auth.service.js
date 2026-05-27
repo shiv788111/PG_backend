@@ -13,6 +13,11 @@ export const login = async ({ email, password }) => {
 
   const isMatch = await bcrypt.compare(password, user.password_hash);
 
+/*------------plain password-------------*/
+
+// const isMatch = password === user.password_hash;
+
+
   if (!isMatch) {
     throw new Error("Invalid password");
   }

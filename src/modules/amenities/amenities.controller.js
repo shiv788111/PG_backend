@@ -98,37 +98,24 @@ export const deleteAmenity = async (req, res) => {
 };
 
 // ASSIGN ROOM AMENITY
-export const assignRoomAmenity = async (
-  req,
-  res
-) => {
+export const assignRoomAmenity = async (req, res) => {
   try {
-    const { room_id, amenity_ids } =
-      req.body;
+    const { room_id, amenity_ids } = req.body;
 
     // VALIDATION
 
-    if (
-      !room_id ||
-      !amenity_ids ||
-      amenity_ids.length === 0
-    ) {
+    if (!room_id || !amenity_ids || amenity_ids.length === 0) {
       return res.status(400).json({
         success: false,
-        message:
-          "Room ID and amenity IDs are required",
+        message: "Room ID and amenity IDs are required",
       });
     }
 
-    const result =
-      await assignRoomAmenityService(
-        req.body
-      );
+    const result = await assignRoomAmenityService(req.body);
 
     res.status(201).json({
       success: true,
-      message:
-        "Room amenities assigned successfully",
+      message: "Room amenities assigned successfully",
       data: result,
     });
   } catch (error) {

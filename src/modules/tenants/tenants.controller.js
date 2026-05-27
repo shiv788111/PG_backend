@@ -53,7 +53,6 @@ export const getTenantCountByBranch = async (req, res) => {
   }
 };
 
-
 /*-------Get Tenant By ID------------*/
 
 export const getTenantById = async (req, res) => {
@@ -62,11 +61,7 @@ export const getTenantById = async (req, res) => {
 
     const data = await tenantsService.getTenantById(tenant_id);
 
-    return successResponse(
-      res,
-      data,
-      "Tenant fetched successfully"
-    );
+    return successResponse(res, data, "Tenant fetched successfully");
   } catch (error) {
     return errorResponse(res, error.message);
   }

@@ -1,24 +1,32 @@
+// complaints.service.js
+
 import {
   getTenantById,
   createComplaintQuery,
   getComplaintById,
   getComplaintsQuery,
   resolveComplaintQuery,
-  checkComplaintOwnership,
 } from "./complaints.model.js";
 
-import { createNotificationService } from "../notifications/notifications.service.js";
-
 /*===========================================================================
+
 | CREATE COMPLAINT
-| Complaint create karta hai aur created complaint ka complete data return karta hai
+| Complaint create karta hai
+
 ===========================================================================*/
+
 export const createComplaint = async (payload) => {
-  const { tenant_id, title, description, category } = payload;
+  const {
+    tenant_id,
+    title,
+    description,
+    category,
+  } = payload;
 
   /*--------------------------------------------------
-  | Check Tenant Exists
+  | CHECK TENANT
   --------------------------------------------------*/
+
   const tenant = await getTenantById(tenant_id);
 
   if (!tenant) {
@@ -26,12 +34,15 @@ export const createComplaint = async (payload) => {
   }
 
   if (!tenant.room_id) {
-    throw new Error("Tenant is not assigned to any room");
+    throw new Error(
+      "Tenant is not assigned to any room"
+    );
   }
 
   /*--------------------------------------------------
-  | Create Complaint
+  | CREATE COMPLAINT
   --------------------------------------------------*/
+
   const result = await createComplaintQuery({
     tenant_id,
     branch_id: tenant.branch_id,
@@ -42,34 +53,48 @@ export const createComplaint = async (payload) => {
   });
 
   /*--------------------------------------------------
-  | Fetch Created Complaint
+  | FETCH CREATED COMPLAINT
   --------------------------------------------------*/
-  const complaint = await getComplaintById(result.insertId);
+
+  const complaint = await getComplaintById(
+    result.insertId
+  );
 
   return complaint;
 };
 
 /*===========================================================================
+
 | GET COMPLAINTS
-| Admin/User ki saari complaints laata hai
+| Complaints list laata hai
+
 ===========================================================================*/
 
 export const getComplaints = async () => {
   return await getComplaintsQuery();
 };
 
-/*--------------Resolve Complaint-----------*/
+/*===========================================================================
 
-/*--------------Resolve Complaint-----------*/
+| RESOLVE COMPLAINT
+| Complaint resolve karta hai
 
-export const resolveComplaint = async (complaint_id) => {
-  const complaint = await getComplaintById(complaint_id);
+===========================================================================*/
+
+export const resolveComplaint = async (
+  complaint_id
+) => {
+  const complaint = await getComplaintById(
+    complaint_id
+  );
 
   if (!complaint) {
     throw new Error("Complaint not found");
   }
 
-  const result = await resolveComplaintQuery(complaint_id);
+  const result = await resolveComplaintQuery(
+    complaint_id
+  );
 
   if (result.affectedRows === 0) {
     throw new Error("Complaint not resolved");

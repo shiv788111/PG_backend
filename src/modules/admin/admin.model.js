@@ -1,5 +1,9 @@
 import db from "../../common/config/db.js";
 
+/* =====================================================
+   CHECK EMAIL EXISTS
+   ===================================================== */
+
 export const checkEmailExists = async (email) => {
   const query = `
     SELECT *
@@ -8,16 +12,14 @@ export const checkEmailExists = async (email) => {
     LIMIT 1
   `;
 
-  return new Promise((resolve, reject) => {
-    db.query(query, [email], (err, results) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(results[0]);
-      }
-    });
-  });
+  const [results] = await db.query(query, [email]);
+
+  return results[0] || null;
 };
+
+/* =====================================================
+   CREATE ADMIN USER
+   ===================================================== */
 
 export const createAdminUser = async (data) => {
   const query = `
@@ -31,17 +33,15 @@ export const createAdminUser = async (data) => {
     VALUES (?, ?, ?, ?)
   `;
 
-  return new Promise((resolve, reject) => {
-    db.query(
-      query,
-      [2, data.name, data.email, data.password],
-      (err, results) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(results);
-        }
-      },
-    );
-  });
+  const [result] = await db.query(query, [
+    2, // Admin Role ID
+    data.name,
+    data.email,
+    data.password,
+  ]);
+
+  return {
+    user_id: result.insertId,
+    affectedRows: result.affectedRows,
+  };
 };

@@ -10,11 +10,7 @@ import {
 } from "./transfers.model.js";
 
 /*--------------------------------------------------------------------------
-| Create Transfer
-|--------------------------------------------------------------------------
-| Tenant ko ek bed/room se dusre bed/room me
-| transfer karta hai.
-|--------------------------------------------------------------------------
+| Create Transfe
 */
 
 export const createTransfer = async (payload, user) => {
@@ -40,7 +36,9 @@ export const createTransfer = async (payload, user) => {
     |--------------------------------------------------------------------------
     */
 
-  const tenant = await checkTenantOwnership(tenant_id, user.user_id);
+ const tenant = await checkTenantOwnership(
+  tenant_id
+);
 
   if (!tenant) {
     throw new Error("Tenant not found");
@@ -128,7 +126,15 @@ export const createTransfer = async (payload, user) => {
 
   await updateTenantStatusQuery(tenant_id);
 
-  return null;
+  return {
+  tenant_id,
+  old_room_id,
+  new_room_id,
+  old_bed_id,
+  new_bed_id,
+  reason,
+  transfer_status: "completed",
+};
 };
 
 /*--------------------------------------------------------------------------
@@ -139,5 +145,5 @@ export const createTransfer = async (payload, user) => {
 */
 
 export const getTransfers = async (user) => {
-  return await getTransfersQuery(user.user_id);
+ return await getTransfersQuery();
 };

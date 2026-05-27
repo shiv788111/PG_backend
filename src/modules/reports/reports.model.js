@@ -144,31 +144,28 @@ const getTenantReport = async () => {
 ================================ */
 
 const getAgreementReport = async () => {
-  const [rows] = await db.query(`
-      SELECT
-        tenant_id,
+  const [rows] = await db.execute(`
+    SELECT
+      tenant_id,
 
-        CONCAT(
-          first_name,
-          ' ',
-          last_name
-        ) AS tenant_name,
+      CONCAT(
+        first_name,
+        ' ',
+        last_name
+      ) AS tenant_name,
 
-        check_in_date,
-        expected_exit_date,
+      phone,
+      email,
 
-        DATEDIFF(
-          expected_exit_date,
-          CURDATE()
-        ) AS days_left
+      created_at
 
-      FROM tenants
+    FROM tenants
 
-      WHERE
-        deleted_at IS NULL
-        AND status = 'active'
+    WHERE
+      deleted_at IS NULL
+      AND status = 'active'
 
-      ORDER BY expected_exit_date ASC
+    ORDER BY created_at DESC
   `);
 
   return rows;
