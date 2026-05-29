@@ -2,18 +2,20 @@ import {
   checkTenantOwnership,
   createPaymentQuery,
   getPaymentsQuery,
+  getPaymentByIdQuery,
+  updatePaymentQuery,
+  deletePaymentQuery,
+  getTenantPaymentHistoryQuery,
 } from "./payments.model.js";
 
-import { createNotificationService } from "../notifications/notifications.service.js";
-
 /*===========================================================================
-| CREATE PAYMENT
+|
+| CREATE PAYMENT.
 ===========================================================================*/
 
 export const createPayment = async (payload, user) => {
   const {
     tenant_id,
-    branch_id,
     amount,
     payment_mode,
     payment_date,
@@ -23,15 +25,17 @@ export const createPayment = async (payload, user) => {
     notes,
   } = payload;
 
-  /*
-  |--------------------------------------------------------------------------
-  | CHECK TENANT OWNERSHIP
-  |--------------------------------------------------------------------------
-  | Ye function check karta hai ki logged-in admin
-  | jis tenant par payment create kar raha hai,
-  | kya wo tenant usi admin ka hai ya nahi.
-  |--------------------------------------------------------------------------
-  */
+  if (!tenant_id) {
+    throw new Error("Tenant is required");
+  }
+
+  if (!amount) {
+    throw new Error("Amount is required");
+  }
+
+  if (!payment_mode) {
+    throw new Error("Payment mode is required");
+  }
 
   const tenant = await checkTenantOwnership(tenant_id, user.user_id);
 
@@ -39,68 +43,123 @@ export const createPayment = async (payload, user) => {
     throw new Error("Tenant not found");
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | CREATE PAYMENT
-  |--------------------------------------------------------------------------
-  */
+  const receipt_no = `RCPT-${Date.now()}`;
 
   const result = await createPaymentQuery({
     tenant_id,
-    branch_id,
+    branch_id: tenant.branch_id,
     amount,
     payment_mode,
     payment_date,
     billing_month,
     status,
+    receipt_no,
+    collected_by: user.user_id,
     transaction_ref,
     notes,
   });
 
-  /*
-  |--------------------------------------------------------------------------
-  | NOTIFICATION :
-  | PAYMENT RECEIVED
-  |--------------------------------------------------------------------------
-  */
-
-  await createNotificationService({
-    user_id: 1,
-    type: "payment_received",
-    title: "Payment Received",
-    message: `Payment of ₹${amount} received successfully`,
-    reference_id: result.insertId,
-  });
-
-  /*
-  |--------------------------------------------------------------------------
-  | NOTIFICATION :
-  | RENT DUE
-  |--------------------------------------------------------------------------
-  | Agar payment pending ho to
-  | rent due notification create hogi
-  |--------------------------------------------------------------------------
-  */
-
-  if (status === "pending") {
-    await createNotificationService({
-      user_id: 1,
-      type: "rent_due",
-      title: "Rent Due",
-      message: `Your rent of ₹${amount} is pending`,
-      reference_id: result.insertId,
-    });
-  }
-
-  return null;
+  return {
+    payment_id: result.insertId,
+    receipt_no,
+  };
 };
 
 /*===========================================================================
-
+|
 | GET PAYMENTS
-
+|
 ===========================================================================*/
 
-export const getPayments = async (user) => {
-  return await getPaymentsQuery(user.user_id);
+export const getPayments = async (user, filters) => {
+  return await getPaymentsQuery(user.user_id, filters);
+};
+
+/*===========================================================================
+|
+| GET PAYMENT BY ID
+|
+===========================================================================*/
+
+export const getPaymentById = async (payment_id, user) => {
+  const payment = await getPaymentByIdQuery(payment_id, user.user_id);
+
+  if (!payment) {
+    throw new Error("Payment not found");
+  }
+
+  return payment;
+};
+
+/*===========================================================================
+|
+| UPDATE PAYMENT
+|
+===========================================================================*/
+
+export const updatePayment = async (
+  payment_id,
+  payload,
+  user
+) => {
+  const payment = await getPaymentByIdQuery(
+    payment_id,
+    user.user_id
+  );
+
+  if (!payment) {
+    throw new Error("Payment not found");
+  }
+
+  await updatePaymentQuery(
+    payment_id,
+    payload
+  );
+
+  const updatedPayment =
+    await getPaymentByIdQuery(
+      payment_id,
+      user.user_id
+    );
+
+  return updatedPayment;
+};
+
+/*===========================================================================
+|
+| DELETE PAYMENT
+|
+===========================================================================*/
+
+export const deletePayment = async (payment_id, user) => {
+  const payment = await getPaymentByIdQuery(payment_id, user.user_id);
+
+  if (!payment) {
+    throw new Error("Payment not found");
+  }
+
+  await deletePaymentQuery(payment_id);
+
+  return {
+  payment_id,
+  deleted: true,
+};
+};
+
+/*===========================================================================
+|
+| GET TENANT PAYMENT HISTORY
+|
+| Fetches complete payment history for a tenant
+|
+===========================================================================*/
+
+export const getTenantPaymentHistory = async (tenant_id, user) => {
+  const tenant = await checkTenantOwnership(tenant_id, user.user_id);
+
+  if (!tenant) {
+    throw new Error("Tenant not found");
+  }
+
+  return await getTenantPaymentHistoryQuery(tenant_id);
 };

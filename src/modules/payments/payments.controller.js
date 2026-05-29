@@ -18,9 +18,70 @@ export const createPayment = async (req, res) => {
 
 export const getPayments = async (req, res) => {
   try {
-    const data = await paymentsService.getPayments(req.user);
+    const data = await paymentsService.getPayments(req.user, req.query);
 
     return successResponse(res, data, "Payments fetched successfully");
+  } catch (error) {
+    return errorResponse(res, error.message);
+  }
+};
+
+/*--------------GET PAYMENT BY ID---------------*/
+
+export const getPaymentById = async (req, res) => {
+  try {
+    const data = await paymentsService.getPaymentById(
+      req.params.payment_id,
+      req.user,
+    );
+
+    return successResponse(res, data, "Payment fetched successfully");
+  } catch (error) {
+    return errorResponse(res, error.message);
+  }
+};
+
+/*--------------UPDATE PAYMENT---------------*/
+
+export const updatePayment = async (req, res) => {
+  try {
+    const data = await paymentsService.updatePayment(
+      req.params.payment_id,
+      req.body,
+      req.user,
+    );
+
+    return successResponse(res, data, "Payment updated successfully");
+  } catch (error) {
+    return errorResponse(res, error.message);
+  }
+};
+
+/*--------------DELETE PAYMENT---------------*/
+
+export const deletePayment = async (req, res) => {
+  try {
+    const data = await paymentsService.deletePayment(
+      req.params.payment_id,
+      req.user,
+    );
+
+    return successResponse(res, data, "Payment deleted successfully");
+  } catch (error) {
+    return errorResponse(res, error.message);
+  }
+};
+
+/*--------------GET TENANT PAYMENT HISTORY---------------*/
+
+export const getTenantPaymentHistory = async (req, res) => {
+  try {
+    const data = await paymentsService.getTenantPaymentHistory(
+      req.params.tenant_id,
+      req.user,
+    );
+
+    return successResponse(res, data, "Payment history fetched successfully");
   } catch (error) {
     return errorResponse(res, error.message);
   }

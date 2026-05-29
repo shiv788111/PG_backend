@@ -1,33 +1,39 @@
 import db from "../../common/config/db.js";
 
-/*--------------Check Tenant Ownership-----------*/
+/*===========================================================================
+|
+| CHECK TENANT OWNERSHIP
+|
+| Verifies that the requested tenant belongs to the logged-in admin.
+| Prevents access to tenants from other properties.
+|
+===========================================================================*/
 
 export const checkTenantOwnership = async (tenant_id, user_id) => {
   const query = `
-      SELECT tenants.*
-      FROM tenants
+    SELECT
+      tenants.*,
+      branches.branch_id
 
-      JOIN beds
-      ON beds.bed_id =
-      tenants.bed_id
+    FROM tenants
 
-      JOIN rooms
-      ON rooms.room_id =
-      beds.room_id
+    JOIN beds
+      ON beds.bed_id = tenants.bed_id
 
-      JOIN branches
-      ON branches.branch_id =
-      rooms.branch_id
+    JOIN rooms
+      ON rooms.room_id = beds.room_id
 
-      JOIN properties
-      ON properties.property_id =
-      branches.property_id
+    JOIN branches
+      ON branches.branch_id = rooms.branch_id
 
-      WHERE tenants.tenant_id = ?
-      AND properties.user_id = ?
+    JOIN properties
+      ON properties.property_id = branches.property_id
 
-      LIMIT 1
-    `;
+    WHERE tenants.tenant_id = ?
+    AND properties.user_id = ?
+
+    LIMIT 1
+  `;
 
   const [results] = await db.query(query, [tenant_id, user_id]);
 
@@ -38,20 +44,22 @@ export const checkTenantOwnership = async (tenant_id, user_id) => {
 
 export const createPaymentQuery = async (data) => {
   const query = `
-      INSERT INTO payments
-      (
-        tenant_id,
-        branch_id,
-        amount,
-        payment_mode,
-        payment_date,
-        billing_month,
-        status,
-        transaction_ref,
-        notes
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+    INSERT INTO payments
+    (
+      tenant_id,
+      branch_id,
+      amount,
+      payment_mode,
+      payment_date,
+      billing_month,
+      status,
+      receipt_no,
+      collected_by,
+      transaction_ref,
+      notes
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
 
   const [result] = await db.query(query, [
     data.tenant_id,
@@ -61,6 +69,8 @@ export const createPaymentQuery = async (data) => {
     data.payment_date,
     data.billing_month,
     data.status,
+    data.receipt_no,
+    data.collected_by,
     data.transaction_ref,
     data.notes,
   ]);
@@ -68,41 +78,211 @@ export const createPaymentQuery = async (data) => {
   return result;
 };
 
-/*--------------Get Payments-----------*/
+/*===========================================================================
+|
+| GET PAYMENTS QUERY
+|
+| Fetches all payments belonging to the logged-in admin.
+| Supports filtering by tenant, branch, status,
+| payment mode and billing month.
+|
+===========================================================================*/
 
-export const getPaymentsQuery = async (user_id) => {
+export const getPaymentsQuery = async (user_id, filters = {}) => {
+  const { tenant_id, branch_id, status, payment_mode, month } = filters;
+
+  let query = `
+ SELECT
+  payments.*,
+  CONCAT(
+    tenants.first_name,
+    ' ',
+    tenants.last_name
+  ) AS tenant_name,
+  tenants.phone,
+  branches.name AS branch_name
+
+    FROM payments
+
+    JOIN tenants
+      ON tenants.tenant_id = payments.tenant_id
+
+    JOIN branches
+      ON branches.branch_id = payments.branch_id
+
+    JOIN properties
+      ON properties.property_id = branches.property_id
+
+    WHERE properties.user_id = ?
+    AND payments.deleted_at IS NULL
+  `;
+
+  const params = [user_id];
+
+  /*--------------Filters-----------*/
+
+  if (tenant_id) {
+    query += ` AND payments.tenant_id = ?`;
+    params.push(tenant_id);
+  }
+
+  if (branch_id) {
+    query += ` AND payments.branch_id = ?`;
+    params.push(branch_id);
+  }
+
+  if (status) {
+    query += ` AND payments.status = ?`;
+    params.push(status);
+  }
+
+  if (payment_mode) {
+    query += ` AND payments.payment_mode = ?`;
+    params.push(payment_mode);
+  }
+
+  if (month) {
+    query += ` AND DATE_FORMAT(payments.billing_month,'%Y-%m') = ?`;
+    params.push(month);
+  }
+
+  query += ` ORDER BY payments.payment_id DESC`;
+
+  const [results] = await db.query(query, params);
+
+  return results;
+};
+
+/*===========================================================================
+|
+| GET PAYMENT BY ID QUERY
+|
+| Fetches a single payment record with tenant
+| and branch details while ensuring ownership.
+|
+===========================================================================*/
+
+export const getPaymentByIdQuery = async (payment_id, user_id) => {
   const query = `
-      SELECT payments.*
+   SELECT
+  payments.*,
+  CONCAT(
+    tenants.first_name,
+    ' ',
+    tenants.last_name
+  ) AS tenant_name,
+  tenants.phone,
+  branches.name AS branch_name
+
+    FROM payments
+
+    JOIN tenants
+      ON tenants.tenant_id = payments.tenant_id
+
+    JOIN branches
+      ON branches.branch_id = payments.branch_id
+
+    JOIN properties
+      ON properties.property_id = branches.property_id
+
+    WHERE payments.payment_id = ?
+    AND properties.user_id = ?
+    AND payments.deleted_at IS NULL
+
+    LIMIT 1
+  `;
+
+  const [results] = await db.query(query, [payment_id, user_id]);
+
+  return results[0];
+};
+
+/*===========================================================================
+|
+| UPDATE PAYMENT QUERY
+|
+===========================================================================*/
+
+export const updatePaymentQuery = async (payment_id, payload) => {
+  const fields = [];
+  const values = [];
+
+  Object.entries(payload).forEach(([key, value]) => {
+    if (value !== undefined) {
+      fields.push(`${key} = ?`);
+      values.push(value);
+    }
+  });
+
+  if (!fields.length) {
+    return null;
+  }
+
+  values.push(payment_id);
+
+  const query = `
+    UPDATE payments
+    SET
+      ${fields.join(", ")},
+      updated_at = NOW()
+
+    WHERE payment_id = ?
+  `;
+
+  const [result] = await db.query(query, values);
+
+  return result;
+};
+
+/*===========================================================================
+|
+| SOFT DELETE PAYMENT QUERY
+|
+===========================================================================*/
+
+export const deletePaymentQuery = async (payment_id) => {
+  const query = `
+    UPDATE payments
+
+    SET deleted_at = NOW()
+
+    WHERE payment_id = ?
+  `;
+
+  const [result] = await db.query(query, [payment_id]);
+
+  return result;
+};
+
+/*===========================================================================
+|
+| GET TENANT PAYMENT HISTORY QUERY
+|
+===========================================================================*/
+
+export const getTenantPaymentHistoryQuery = async (tenant_id) => {
+  const query = `
+      SELECT
+        payment_id,
+        amount,
+        payment_mode,
+        payment_date,
+        billing_month,
+        status,
+        receipt_no,
+        transaction_ref,
+        notes,
+        created_at
+
       FROM payments
 
-      JOIN tenants
-      ON tenants.tenant_id =
-      payments.tenant_id
+      WHERE tenant_id = ?
+      AND deleted_at IS NULL
 
-      JOIN beds
-      ON beds.bed_id =
-      tenants.bed_id
-
-      JOIN rooms
-      ON rooms.room_id =
-      beds.room_id
-
-      JOIN branches
-      ON branches.branch_id =
-      rooms.branch_id
-
-      JOIN properties
-      ON properties.property_id =
-      branches.property_id
-
-      WHERE properties.user_id = ?
-
-      AND payments.deleted_at IS NULL
-
-      ORDER BY payment_id DESC
+      ORDER BY payment_date DESC
     `;
 
-  const [results] = await db.query(query, [user_id]);
+  const [results] = await db.query(query, [tenant_id]);
 
   return results;
 };
